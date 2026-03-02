@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { GameCard } from "./GameCard";
 import { SportTabs } from "./SportTabs";
+import { AIAnalysis } from "./AIAnalysis";
 import { getDemoGames } from "./DemoGameData";
 import type { ParsedGame } from "@/lib/api/odds";
 import type { SportKey } from "@/lib/utils/constants";
@@ -32,7 +33,9 @@ export function GamesDashboard({
   const [demoMessage, setDemoMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [researchingId, setResearchingId] = useState<string | null>(null);
+  const [researchingGame, setResearchingGame] = useState<ParsedGame | null>(
+    null
+  );
 
   const fetchGames = useCallback(async (sport: SportKey) => {
     setLoading(true);
@@ -49,7 +52,6 @@ export function GamesDashboard({
       }
 
       if (data.demo || data.games.length === 0) {
-        // Use demo data when API is not configured or returns no games
         const demoGames = getDemoGames(sport);
         setGames(demoGames);
         setIsDemo(true);
@@ -62,7 +64,6 @@ export function GamesDashboard({
 
       setLastRefresh(new Date());
     } catch (err) {
-      // Fallback to demo data on any error
       const demoGames = getDemoGames(sport);
       setGames(demoGames);
       setIsDemo(true);
@@ -81,7 +82,6 @@ export function GamesDashboard({
     fetchGames(selectedSport);
   }, [selectedSport, fetchGames]);
 
-  // Auto-refresh every 2 minutes
   useEffect(() => {
     const interval = setInterval(() => {
       fetchGames(selectedSport);
@@ -91,17 +91,11 @@ export function GamesDashboard({
 
   function handleSportChange(sport: SportKey) {
     setSelectedSport(sport);
+    setResearchingGame(null);
   }
 
   function handleResearch(game: ParsedGame) {
-    // Phase 3 will wire this to the AI analysis endpoint
-    setResearchingId(game.id);
-    setTimeout(() => {
-      setResearchingId(null);
-      alert(
-        `Deep Research for ${game.awayTeam} @ ${game.homeTeam} — AI analysis coming in Phase 3!`
-      );
-    }, 1500);
+    setResearchingGame(game);
   }
 
   return (
@@ -151,6 +145,14 @@ export function GamesDashboard({
         </div>
       )}
 
+      {/* AI Analysis Panel — shown when user clicks Deep Research */}
+      {researchingGame && (
+        <AIAnalysis
+          game={researchingGame}
+          onClose={() => setResearchingGame(null)}
+        />
+      )}
+
       {/* Loading state */}
       {loading && games.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
@@ -183,7 +185,7 @@ export function GamesDashboard({
               key={game.id}
               game={game}
               onResearch={handleResearch}
-              researchLoading={researchingId === game.id}
+              researchLoading={researchingGame?.id === game.id}
             />
           ))}
         </div>
